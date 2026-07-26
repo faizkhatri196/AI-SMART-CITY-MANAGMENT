@@ -204,6 +204,13 @@ export const LocationIntelligenceCenter: React.FC = () => {
 
   // Initial Launch Geolocation Request (Zero Hardcoding)
   useEffect(() => {
+    // 1. Immediately hydrate initial coordinates and load data so UI never hangs
+    const defaultLat = 40.7128;
+    const defaultLon = -74.0060;
+    setCoords({ lat: defaultLat, lon: defaultLon });
+    loadData(defaultLat, defaultLon, radiusKm, activeCategory);
+
+    // 2. Request live browser GPS with a 3-second timeout
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -215,14 +222,10 @@ export const LocationIntelligenceCenter: React.FC = () => {
           loadData(lat, lon, radiusKm, activeCategory);
         },
         (err) => {
-          console.warn("GPS Permission or Network Geolocation unavailable:", err);
+          console.warn("GPS Permission or Network Geolocation notice:", err);
           setPermissionState("denied");
-          const fallbackLat = 40.7128;
-          const fallbackLon = -74.0060;
-          setCoords({ lat: fallbackLat, lon: fallbackLon });
-          loadData(fallbackLat, fallbackLon, radiusKm, activeCategory);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
       );
     }
   }, []);
