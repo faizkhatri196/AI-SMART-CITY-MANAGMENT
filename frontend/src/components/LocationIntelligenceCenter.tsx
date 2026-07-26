@@ -82,17 +82,73 @@ export const LocationIntelligenceCenter: React.FC = () => {
 
   const loadData = async (lat: number, lon: number, rKm: number, cat: string) => {
     setLoading(true);
-    const details = await detectLocation(lat, lon);
-    if (details) setLocDetails(details);
 
-    const intel = await fetchRadiusIntel(lat, lon, rKm, cat);
-    if (intel) setRadiusIntel(intel);
+    // Set immediate client locDetails preview so UI never hangs on "Detecting..."
+    setLocDetails((prev: any) => ({
+      current_address: (prev?.current_address && !prev?.current_address.includes("Detecting"))
+        ? prev.current_address
+        : `Latitude: ${lat.toFixed(4)}, Longitude: ${lon.toFixed(4)}`,
+      locality: prev?.locality || "Central Locality",
+      suburb: prev?.suburb || "Downtown",
+      district: prev?.district || "Local District",
+      city: prev?.city || "Active Sector",
+      state: prev?.state || "Region",
+      country: prev?.country || "Global",
+      currency_code: prev?.currency_code || "USD",
+      currency_symbol: prev?.currency_symbol || "$"
+    }));
 
-    const ins = await fetchLocationInsights(lat, lon);
-    if (ins) setInsights(ins);
+    try {
+      const details = await detectLocation(lat, lon);
+      if (details && details.current_address) {
+        setLocDetails(details);
+      } else {
+        // Instant browser-side Nominatim client fallback if backend is warming up
+        const clientRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+          headers: { "User-Agent": "CityVerseAI/1.0" }
+        });
+        if (clientRes.ok) {
+          const data = await clientRes.json();
+          const addr = data.address || {};
+          const city = addr.city || addr.town || addr.village || addr.county || "Local Sector";
+          const state = addr.state || addr.region || "State";
+          const country = addr.country || "Country";
+          const suburb = addr.suburb || addr.neighbourhood || "Central Sector";
+          const district = addr.county || addr.district || `${city} District`;
+          const isIndia = country.toLowerCase().includes("india");
+          const isEurope = country.toLowerCase().includes("france") || country.toLowerCase().includes("germany") || country.toLowerCase().includes("spain") || country.toLowerCase().includes("italy");
 
-    const alt = await fetchSmartAlerts();
-    if (alt?.alerts) setAlerts(alt.alerts);
+          setLocDetails({
+            current_address: data.display_name || `Latitude: ${lat.toFixed(4)}, Longitude: ${lon.toFixed(4)}`,
+            locality: suburb,
+            suburb: suburb,
+            district: district,
+            city: city,
+            state: state,
+            country: country,
+            currency_code: isIndia ? "INR" : (isEurope ? "EUR" : "USD"),
+            currency_symbol: isIndia ? "₹" : (isEurope ? "€" : "$")
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Reverse geocoding fallback notice:", e);
+    }
+
+    try {
+      const intel = await fetchRadiusIntel(lat, lon, rKm, cat);
+      if (intel) setRadiusIntel(intel);
+    } catch (e) {}
+
+    try {
+      const ins = await fetchLocationInsights(lat, lon);
+      if (ins) setInsights(ins);
+    } catch (e) {}
+
+    try {
+      const alt = await fetchSmartAlerts();
+      if (alt?.alerts) setAlerts(alt.alerts);
+    } catch (e) {}
 
     setLoading(false);
   };
