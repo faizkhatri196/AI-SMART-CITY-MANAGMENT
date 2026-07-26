@@ -308,7 +308,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
 
   const categories = [
     { key: "ALL", label: "All 20 Categories", icon: Globe2 },
-    { key: "hospitals", label: "Hospitals & ICU", icon: Hospital },
+    { key: "hospitals", label: "Hospitals & ICU", icon: Building },
     { key: "police", label: "Police Precincts", icon: ShieldAlert },
     { key: "traffic", label: "Traffic Congestion", icon: Car },
     { key: "weather", label: "Weather Radar", icon: Wind },
