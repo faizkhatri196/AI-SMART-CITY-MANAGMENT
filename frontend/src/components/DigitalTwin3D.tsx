@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, Component, ErrorInfo, ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Text, Html } from "@react-three/drei";
+import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
-import { Activity, ShieldAlert, Zap, Hospital, Car, Sun, Moon } from "lucide-react";
+import { Activity, ShieldAlert, Zap, Hospital, Car, Sun, Moon, Box, Building2, AlertCircle } from "lucide-react";
 
 interface BuildingData {
   id: string;
@@ -28,6 +28,37 @@ const CITY_BUILDINGS: BuildingData[] = [
   { id: "b7", name: "Financial District Tower A", category: "Commercial", pos: [-3, 7, 3], size: [2.5, 14, 2.5], color: "#6366f1", temperature_c: 23.0, occupancy_pct: 82, structural_integrity: 96 },
   { id: "b8", name: "Tech Innovation Hub B", category: "Commercial", pos: [4, 6.5, 2], size: [2.5, 13, 2.5], color: "#8b5cf6", temperature_c: 22.8, occupancy_pct: 85, structural_integrity: 99 },
 ];
+
+// Error Boundary for WebGL Unsupported or Canvas Failure
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class WebGLErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn("WebGL 3D Canvas Error caught by boundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 // Animated 3D Traffic Particle Stream
 const TrafficParticles: React.FC = () => {
@@ -124,6 +155,49 @@ const BuildingMesh: React.FC<{
   );
 };
 
+// 2D High-Tech Fallback View when WebGL is unavailable
+const Fallback2DView: React.FC<{ buildings: BuildingData[]; onSelect: (b: BuildingData) => void }> = ({ buildings, onSelect }) => {
+  return (
+    <div className="w-full h-full p-6 flex flex-col justify-between bg-darkBg/95 font-mono text-xs space-y-4 overflow-y-auto">
+      <div className="flex items-center space-x-2 text-cyanGlow">
+        <Building2 className="w-5 h-5 text-cyanGlow" />
+        <span className="font-bold">2D/3D HYBRID DIGITAL TWIN INFRASTRUCTURE MATRIX</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        {buildings.map((b) => (
+          <div
+            key={b.id}
+            onClick={() => onSelect(b)}
+            className="p-4 rounded-xl glass-panel border border-white/10 hover:border-cyanGlow/50 cursor-pointer space-y-2 transition-all group"
+          >
+            <div className="flex justify-between items-start">
+              <h4 className="font-bold text-white group-hover:text-cyanGlow transition">{b.name}</h4>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyanGlow/20 text-cyanGlow border border-cyanGlow/30">
+                {b.category}
+              </span>
+            </div>
+            <div className="text-[11px] text-gray-300 space-y-1">
+              <div className="flex justify-between">
+                <span>Thermal:</span>
+                <span className="text-amber-300 font-bold">{b.temperature_c}°C</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Occupancy:</span>
+                <span className="text-cyanGlow font-bold">{b.occupancy_pct}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Integrity:</span>
+                <span className="text-emerald-400 font-bold">{b.structural_integrity}%</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const DigitalTwin3D: React.FC = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
   const [dayNight, setDayNight] = useState<"day" | "night">("night");
@@ -179,31 +253,33 @@ export const DigitalTwin3D: React.FC = () => {
         </div>
       )}
 
-      {/* Three.js Canvas */}
-      <Canvas camera={{ position: [20, 20, 20], fov: 45 }}>
-        <color attach="background" args={[dayNight === "night" ? "#090d16" : "#1e293b"]} />
-        <ambientLight intensity={dayNight === "night" ? 0.3 : 0.8} />
-        <directionalLight position={[30, 40, 20]} intensity={dayNight === "night" ? 0.8 : 1.5} color="#ffffff" />
-        <pointLight position={[0, 15, 0]} intensity={1.5} color="#00f2fe" distance={30} />
+      {/* Three.js Canvas wrapped in ErrorBoundary */}
+      <WebGLErrorBoundary fallback={<Fallback2DView buildings={CITY_BUILDINGS} onSelect={setSelectedBuilding} />}>
+        <Canvas camera={{ position: [20, 20, 20], fov: 45 }}>
+          <color attach="background" args={[dayNight === "night" ? "#090d16" : "#1e293b"]} />
+          <ambientLight intensity={dayNight === "night" ? 0.3 : 0.8} />
+          <directionalLight position={[30, 40, 20]} intensity={dayNight === "night" ? 0.8 : 1.5} color="#ffffff" />
+          <pointLight position={[0, 15, 0]} intensity={1.5} color="#00f2fe" distance={30} />
 
-        {/* 3D Road Grid */}
-        <gridHelper args={[40, 40, "#00f2fe", "#1e293b"]} position={[0, 0, 0]} />
+          {/* 3D Road Grid */}
+          <gridHelper args={[40, 40, "#00f2fe", "#1e293b"]} position={[0, 0, 0]} />
 
-        {/* Animated Moving Traffic Particles */}
-        <TrafficParticles />
+          {/* Animated Moving Traffic Particles */}
+          <TrafficParticles />
 
-        {/* Buildings */}
-        {CITY_BUILDINGS.map((b) => (
-          <BuildingMesh
-            key={b.id}
-            data={b}
-            isSelected={selectedBuilding?.id === b.id}
-            onSelect={setSelectedBuilding}
-          />
-        ))}
+          {/* Buildings */}
+          {CITY_BUILDINGS.map((b) => (
+            <BuildingMesh
+              key={b.id}
+              data={b}
+              isSelected={selectedBuilding?.id === b.id}
+              onSelect={setSelectedBuilding}
+            />
+          ))}
 
-        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} maxPolarAngle={Math.PI / 2.1} />
-      </Canvas>
+          <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} maxPolarAngle={Math.PI / 2.1} />
+        </Canvas>
+      </WebGLErrorBoundary>
     </div>
   );
 };
