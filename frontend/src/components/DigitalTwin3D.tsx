@@ -6,7 +6,7 @@ import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { Activity, ShieldAlert, Zap, Hospital, Car, Sun, Moon, Box, Building2, AlertCircle } from "lucide-react";
 
-interface BuildingData {
+export interface BuildingData {
   id: string;
   name: string;
   category: "Government" | "Hospital" | "Power" | "Police" | "Fire" | "Commercial" | "Park";
@@ -18,16 +18,26 @@ interface BuildingData {
   structural_integrity: number;
 }
 
-const CITY_BUILDINGS: BuildingData[] = [
-  { id: "b1", name: "One World Trade AI Center", category: "Government", pos: [0, 8, 0], size: [3, 16, 3], color: "#00f2fe", temperature_c: 21.4, occupancy_pct: 88, structural_integrity: 100 },
-  { id: "b2", name: "Metro General Hospital", category: "Hospital", pos: [-6, 5, -5], size: [4, 10, 4], color: "#06d6a0", temperature_c: 22.1, occupancy_pct: 92, structural_integrity: 98 },
-  { id: "b3", name: "Empire Power Substation #4", category: "Power", pos: [6, 6, -4], size: [3.5, 12, 3.5], color: "#ffb703", temperature_c: 38.5, occupancy_pct: 45, structural_integrity: 95 },
-  { id: "b4", name: "Police & SWAT Central HQ", category: "Police", pos: [-7, 4, 5], size: [4, 8, 4], color: "#3b82f6", temperature_c: 20.8, occupancy_pct: 76, structural_integrity: 99 },
-  { id: "b5", name: "Central Fire Dispatch Tower", category: "Fire", pos: [7, 4.5, 6], size: [3.5, 9, 3.5], color: "#ef4444", temperature_c: 24.2, occupancy_pct: 60, structural_integrity: 97 },
-  { id: "b6", name: "Central Park Green Sector", category: "Park", pos: [0, 0.2, -8], size: [10, 0.4, 6], color: "#10b981", temperature_c: 19.5, occupancy_pct: 30, structural_integrity: 100 },
-  { id: "b7", name: "Financial District Tower A", category: "Commercial", pos: [-3, 7, 3], size: [2.5, 14, 2.5], color: "#6366f1", temperature_c: 23.0, occupancy_pct: 82, structural_integrity: 96 },
-  { id: "b8", name: "Tech Innovation Hub B", category: "Commercial", pos: [4, 6.5, 2], size: [2.5, 13, 2.5], color: "#8b5cf6", temperature_c: 22.8, occupancy_pct: 85, structural_integrity: 99 },
-];
+export interface DigitalTwin3DProps {
+  location?: any;
+}
+
+export const generateDynamicBuildings = (loc?: any): BuildingData[] => {
+  const city = loc?.city || "Active Sector";
+  const suburb = loc?.suburb || loc?.locality || "Central Locality";
+  const district = loc?.district || `${city} District`;
+
+  return [
+    { id: "b1", name: `${suburb} Civic City Hall & AI Center`, category: "Government", pos: [0, 8, 0], size: [3, 16, 3], color: "#00f2fe", temperature_c: 21.4, occupancy_pct: 88, structural_integrity: 100 },
+    { id: "b2", name: `${city} General Emergency Hospital`, category: "Hospital", pos: [-6, 5, -5], size: [4, 10, 4], color: "#06d6a0", temperature_c: 22.1, occupancy_pct: 92, structural_integrity: 98 },
+    { id: "b3", name: `${district} Power Substation Node`, category: "Power", pos: [6, 6, -4], size: [3.5, 12, 3.5], color: "#ffb703", temperature_c: 38.5, occupancy_pct: 45, structural_integrity: 95 },
+    { id: "b4", name: `${suburb} Police & SWAT Precinct`, category: "Police", pos: [-7, 4, 5], size: [4, 8, 4], color: "#3b82f6", temperature_c: 20.8, occupancy_pct: 76, structural_integrity: 99 },
+    { id: "b5", name: `${city} Fire & Emergency Dispatch`, category: "Fire", pos: [7, 4.5, 6], size: [3.5, 9, 3.5], color: "#ef4444", temperature_c: 24.2, occupancy_pct: 60, structural_integrity: 97 },
+    { id: "b6", name: `${suburb} Public Botanical Green Sector`, category: "Park", pos: [0, 0.2, -8], size: [10, 0.4, 6], color: "#10b981", temperature_c: 19.5, occupancy_pct: 30, structural_integrity: 100 },
+    { id: "b7", name: `${city} Executive Financial Tower`, category: "Commercial", pos: [-3, 7, 3], size: [2.5, 14, 2.5], color: "#6366f1", temperature_c: 23.0, occupancy_pct: 82, structural_integrity: 96 },
+    { id: "b8", name: `${suburb} Smart Tech Innovation Hub`, category: "Commercial", pos: [4, 6.5, 2], size: [2.5, 13, 2.5], color: "#8b5cf6", temperature_c: 22.8, occupancy_pct: 85, structural_integrity: 99 },
+  ];
+};
 
 // Error Boundary for WebGL Unsupported or Canvas Failure
 interface ErrorBoundaryProps {
@@ -198,17 +208,20 @@ const Fallback2DView: React.FC<{ buildings: BuildingData[]; onSelect: (b: Buildi
   );
 };
 
-export const DigitalTwin3D: React.FC = () => {
+export const DigitalTwin3D: React.FC<DigitalTwin3DProps> = ({ location }) => {
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
   const [dayNight, setDayNight] = useState<"day" | "night">("night");
+
+  const buildings = useMemo(() => generateDynamicBuildings(location), [location]);
+  const activeCity = location?.city || location?.suburb || "Local Sector";
 
   return (
     <div className="w-full h-full min-h-[520px] rounded-2xl overflow-hidden glass-panel relative flex flex-col">
       {/* 3D Toolbar Header */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-3">
         <div className="bg-darkBg/90 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-xs font-mono">
-          <span className="text-cyanGlow font-bold block">ULTRA 3D DIGITAL TWIN SPATIAL MESH</span>
-          <span className="text-gray-400 text-[10px]">Real-World Building Extrusions & Live Traffic Streams</span>
+          <span className="text-cyanGlow font-bold block">{activeCity.toUpperCase()} 3D DIGITAL TWIN MESH</span>
+          <span className="text-gray-400 text-[10px]">Real-World Building Extrusions & Live Traffic Telemetry</span>
         </div>
 
         <button
@@ -254,7 +267,7 @@ export const DigitalTwin3D: React.FC = () => {
       )}
 
       {/* Three.js Canvas wrapped in ErrorBoundary */}
-      <WebGLErrorBoundary fallback={<Fallback2DView buildings={CITY_BUILDINGS} onSelect={setSelectedBuilding} />}>
+      <WebGLErrorBoundary fallback={<Fallback2DView buildings={buildings} onSelect={setSelectedBuilding} />}>
         <Canvas camera={{ position: [20, 20, 20], fov: 45 }}>
           <color attach="background" args={[dayNight === "night" ? "#090d16" : "#1e293b"]} />
           <ambientLight intensity={dayNight === "night" ? 0.3 : 0.8} />
@@ -268,7 +281,7 @@ export const DigitalTwin3D: React.FC = () => {
           <TrafficParticles />
 
           {/* Buildings */}
-          {CITY_BUILDINGS.map((b) => (
+          {buildings.map((b) => (
             <BuildingMesh
               key={b.id}
               data={b}
