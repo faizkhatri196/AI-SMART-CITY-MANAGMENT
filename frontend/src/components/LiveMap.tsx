@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 
@@ -16,7 +17,9 @@ const createIcon = (color: string) => {
 const MapRecenter = ({ center }: { center: [number, number] }) => {
   const map = useMap();
   useEffect(() => {
-    map.flyTo(center, map.getZoom(), { animate: true, duration: 1.2 });
+    if (map && center && center[0] && center[1]) {
+      map.setView(center, map.getZoom(), { animate: true });
+    }
   }, [center, map]);
   return null;
 };
@@ -41,6 +44,7 @@ export const LiveMap: React.FC<LiveMapProps> = ({
   zoom = 13,
   onMapClick
 }) => {
+  const [isClient, setIsClient] = useState(false);
   const [layers, setLayers] = useState({
     traffic: true,
     emergency: true,
@@ -48,18 +52,22 @@ export const LiveMap: React.FC<LiveMapProps> = ({
     power: true
   });
 
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const hospitalPoints: [number, number, string][] = [
-    [center[0] + 0.005, center[1] + 0.004, "St. Jude Regional Hospital (ICU Beds: 24)"],
-    [center[0] - 0.008, center[1] - 0.006, "Metro Trauma Unit (ICU Beds: 12)"]
+    [center[0] + 0.005, center[1] + 0.004, "General Emergency Hospital (24/7 ICU Beds Available)"],
+    [center[0] - 0.008, center[1] - 0.006, "Community Medical Center (Urgent Care & Trauma)"]
   ];
 
   const policePoints: [number, number, string][] = [
-    [center[0] - 0.004, center[1] + 0.008, "Police Patrol Unit (Active Patrol)"],
+    [center[0] - 0.004, center[1] + 0.008, "Police Precinct #4 Patrol Unit"],
     [center[0] + 0.007, center[1] - 0.003, "SWAT Command Response Center"]
   ];
 
   const powerGridPoints: [number, number, string][] = [
-    [center[0] + 0.010, center[1] + 0.012, "Power Grid Substation (150MW Load)"],
+    [center[0] + 0.010, center[1] + 0.012, "Power Grid Substation Node (150MW Load)"],
     [center[0] - 0.012, center[1] - 0.010, "Solar Generation Hub A"]
   ];
 
@@ -69,11 +77,19 @@ export const LiveMap: React.FC<LiveMapProps> = ({
     [center[0] + 0.010, center[1] + 0.010]
   ];
 
+  if (!isClient) {
+    return (
+      <div className="w-full h-full min-h-[400px] rounded-2xl glass-panel flex items-center justify-center font-mono text-xs text-cyanGlow">
+        <span>Initializing 2D GIS Live Spatial Vector Map...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-full min-h-[500px] rounded-2xl overflow-hidden glass-panel relative">
+    <div className="w-full h-full min-h-[400px] rounded-2xl overflow-hidden glass-panel relative">
       {/* Map Layer Overlays */}
-      <div className="absolute top-4 right-4 z-[500] bg-darkBg/90 backdrop-blur-md p-3 rounded-xl border border-white/10 space-y-2 text-xs font-mono">
-        <span className="text-cyanGlow font-bold block mb-1">GIS LAYER OVERLAYS</span>
+      <div className="absolute top-3 right-3 z-[500] bg-darkBg/90 backdrop-blur-md p-2.5 rounded-xl border border-white/10 space-y-1.5 text-[11px] font-mono shadow-xl">
+        <span className="text-cyanGlow font-bold block mb-0.5">2D GIS LAYERS</span>
         <label className="flex items-center space-x-2 text-gray-200 cursor-pointer">
           <input
             type="checkbox"
@@ -81,7 +97,7 @@ export const LiveMap: React.FC<LiveMapProps> = ({
             onChange={(e) => setLayers({ ...layers, traffic: e.target.checked })}
             className="accent-cyanGlow"
           />
-          <span>Traffic Congestion Corridors</span>
+          <span>Traffic Flow Corridors</span>
         </label>
         <label className="flex items-center space-x-2 text-gray-200 cursor-pointer">
           <input
@@ -90,7 +106,7 @@ export const LiveMap: React.FC<LiveMapProps> = ({
             onChange={(e) => setLayers({ ...layers, emergency: e.target.checked })}
             className="accent-alertRed"
           />
-          <span>Police & Fire Units</span>
+          <span>Police Patrol Squads</span>
         </label>
         <label className="flex items-center space-x-2 text-gray-200 cursor-pointer">
           <input
@@ -99,7 +115,7 @@ export const LiveMap: React.FC<LiveMapProps> = ({
             onChange={(e) => setLayers({ ...layers, hospitals: e.target.checked })}
             className="accent-emerald-400"
           />
-          <span>Hospitals & ICU Centers</span>
+          <span>Hospitals & ICU Units</span>
         </label>
         <label className="flex items-center space-x-2 text-gray-200 cursor-pointer">
           <input
@@ -112,7 +128,7 @@ export const LiveMap: React.FC<LiveMapProps> = ({
         </label>
       </div>
 
-      <MapContainer center={center} zoom={zoom} scrollWheelZoom={true}>
+      <MapContainer center={center} zoom={zoom} scrollWheelZoom={true} style={{ width: "100%", height: "100%", minHeight: "400px" }}>
         <MapRecenter center={center} />
         <MapClickHandler onMapClick={onMapClick} />
 

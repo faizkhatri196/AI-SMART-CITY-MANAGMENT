@@ -253,13 +253,8 @@ export const LocationIntelligenceCenter: React.FC = () => {
     lastPosRef.current = { lat, lon, time: now };
   };
 
-  // Initial Launch Geolocation Request
+  // Initial Launch Geolocation Request (High Accuracy Device Fetch)
   useEffect(() => {
-    const defaultLat = 40.7128;
-    const defaultLon = -74.0060;
-    setCoords({ lat: defaultLat, lon: defaultLon });
-    loadData(defaultLat, defaultLon, radiusKm, activeCategory);
-
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -273,9 +268,18 @@ export const LocationIntelligenceCenter: React.FC = () => {
         (err) => {
           console.warn("GPS Permission or Network Geolocation notice:", err);
           setPermissionState("denied");
+          const defaultLat = 40.7128;
+          const defaultLon = -74.0060;
+          setCoords({ lat: defaultLat, lon: defaultLon });
+          loadData(defaultLat, defaultLon, radiusKm, activeCategory);
         },
-        { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
       );
+    } else {
+      const defaultLat = 40.7128;
+      const defaultLon = -74.0060;
+      setCoords({ lat: defaultLat, lon: defaultLon });
+      loadData(defaultLat, defaultLon, radiusKm, activeCategory);
     }
   }, []);
 
@@ -354,13 +358,20 @@ export const LocationIntelligenceCenter: React.FC = () => {
 
   const handleLocateMe = () => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setPermissionState("granted");
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        setCoords({ lat, lon });
-        loadData(lat, lon, radiusKm, activeCategory);
-      });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setPermissionState("granted");
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          setCoords({ lat, lon });
+          loadData(lat, lon, radiusKm, activeCategory);
+        },
+        (err) => {
+          console.warn("Locate me error:", err);
+          alert("Could not fetch GPS position. Please check your browser location permissions or type your city in the search bar.");
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
     }
   };
 
