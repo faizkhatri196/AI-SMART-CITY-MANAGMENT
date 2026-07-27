@@ -4,12 +4,12 @@ import React, { useRef, useState, useMemo, Component, ErrorInfo, ReactNode } fro
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
-import { Activity, ShieldAlert, Zap, Hospital, Car, Sun, Moon, Box, Building2, AlertCircle } from "lucide-react";
+import { Activity, ShieldAlert, Zap, Building, Car, Sun, Moon, Box, Building2, AlertCircle, MapPin } from "lucide-react";
 
 export interface BuildingData {
   id: string;
   name: string;
-  category: "Government" | "Hospital" | "Power" | "Police" | "Fire" | "Commercial" | "Park";
+  category: "Government" | "Hospital" | "Power" | "Police" | "Fire" | "Commercial" | "Park" | "Residential" | "Landmark";
   pos: [number, number, number];
   size: [number, number, number];
   color: string;
@@ -23,23 +23,30 @@ export interface DigitalTwin3DProps {
 }
 
 export const generateDynamicBuildings = (loc?: any): BuildingData[] => {
-  const city = loc?.city || "Active Sector";
-  const suburb = loc?.suburb || loc?.locality || "Central Locality";
+  const city = loc?.city || loc?.suburb || loc?.locality || "Active Sector";
+  const suburb = loc?.suburb || loc?.locality || `${city} Central`;
   const district = loc?.district || `${city} District`;
+  const lat = loc?.lat || 40.7128;
+  const lon = loc?.lon || -74.0060;
 
+  // Generate 12 dynamic 3D building extrusions customized for the active location
   return [
-    { id: "b1", name: `${suburb} Civic City Hall & AI Center`, category: "Government", pos: [0, 8, 0], size: [3, 16, 3], color: "#00f2fe", temperature_c: 21.4, occupancy_pct: 88, structural_integrity: 100 },
+    { id: "b1", name: `${city} City Hall & AI Command Center`, category: "Government", pos: [0, 8, 0], size: [3.5, 16, 3.5], color: "#00f2fe", temperature_c: 21.4, occupancy_pct: 88, structural_integrity: 100 },
     { id: "b2", name: `${city} General Emergency Hospital`, category: "Hospital", pos: [-6, 5, -5], size: [4, 10, 4], color: "#06d6a0", temperature_c: 22.1, occupancy_pct: 92, structural_integrity: 98 },
     { id: "b3", name: `${district} Power Substation Node`, category: "Power", pos: [6, 6, -4], size: [3.5, 12, 3.5], color: "#ffb703", temperature_c: 38.5, occupancy_pct: 45, structural_integrity: 95 },
-    { id: "b4", name: `${suburb} Police & SWAT Precinct`, category: "Police", pos: [-7, 4, 5], size: [4, 8, 4], color: "#3b82f6", temperature_c: 20.8, occupancy_pct: 76, structural_integrity: 99 },
-    { id: "b5", name: `${city} Fire & Emergency Dispatch`, category: "Fire", pos: [7, 4.5, 6], size: [3.5, 9, 3.5], color: "#ef4444", temperature_c: 24.2, occupancy_pct: 60, structural_integrity: 97 },
-    { id: "b6", name: `${suburb} Public Botanical Green Sector`, category: "Park", pos: [0, 0.2, -8], size: [10, 0.4, 6], color: "#10b981", temperature_c: 19.5, occupancy_pct: 30, structural_integrity: 100 },
+    { id: "b4", name: `${suburb} Police & SWAT Precinct #4`, category: "Police", pos: [-7, 4, 5], size: [4, 8, 4], color: "#3b82f6", temperature_c: 20.8, occupancy_pct: 76, structural_integrity: 99 },
+    { id: "b5", name: `${city} Fire & Disaster Dispatch`, category: "Fire", pos: [7, 4.5, 6], size: [3.5, 9, 3.5], color: "#ef4444", temperature_c: 24.2, occupancy_pct: 60, structural_integrity: 97 },
+    { id: "b6", name: `${suburb} Green Esplanade Park`, category: "Park", pos: [0, 0.2, -8], size: [10, 0.4, 6], color: "#10b981", temperature_c: 19.5, occupancy_pct: 30, structural_integrity: 100 },
     { id: "b7", name: `${city} Executive Financial Tower`, category: "Commercial", pos: [-3, 7, 3], size: [2.5, 14, 2.5], color: "#6366f1", temperature_c: 23.0, occupancy_pct: 82, structural_integrity: 96 },
-    { id: "b8", name: `${suburb} Smart Tech Innovation Hub`, category: "Commercial", pos: [4, 6.5, 2], size: [2.5, 13, 2.5], color: "#8b5cf6", temperature_c: 22.8, occupancy_pct: 85, structural_integrity: 99 },
+    { id: "b8", name: `${suburb} Tech Innovation Hub`, category: "Commercial", pos: [4, 6.5, 2], size: [2.5, 13, 2.5], color: "#8b5cf6", temperature_c: 22.8, occupancy_pct: 85, structural_integrity: 99 },
+    { id: "b9", name: `${city} Central Plaza & Landmark Monument`, category: "Landmark", pos: [2, 5.5, -6], size: [3, 11, 3], color: "#ec4899", temperature_c: 20.5, occupancy_pct: 95, structural_integrity: 100 },
+    { id: "b10", name: `${suburb} Residential Heights Complex`, category: "Residential", pos: [-5, 6, -10], size: [4.5, 12, 3], color: "#a855f7", temperature_c: 21.8, occupancy_pct: 90, structural_integrity: 97 },
+    { id: "b11", name: `${city} Waterfront Resort & Spa`, category: "Commercial", pos: [8, 5, -9], size: [4, 10, 4], color: "#14b8a6", temperature_c: 22.5, occupancy_pct: 78, structural_integrity: 98 },
+    { id: "b12", name: `${suburb} EV Supercharger & Logistics Hub`, category: "Power", pos: [-8, 3.5, 10], size: [3.5, 7, 3.5], color: "#eab308", temperature_c: 29.4, occupancy_pct: 52, structural_integrity: 96 }
   ];
 };
 
-// Error Boundary for WebGL Unsupported or Canvas Failure
+// Error Boundary for WebGL Canvas
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback: ReactNode;
@@ -168,28 +175,28 @@ const BuildingMesh: React.FC<{
 // 2D High-Tech Fallback View when WebGL is unavailable
 const Fallback2DView: React.FC<{ buildings: BuildingData[]; onSelect: (b: BuildingData) => void }> = ({ buildings, onSelect }) => {
   return (
-    <div className="w-full h-full p-6 flex flex-col justify-between bg-darkBg/95 font-mono text-xs space-y-4 overflow-y-auto">
+    <div className="w-full h-full p-6 flex flex-col justify-between bg-darkBg/95 font-mono text-xs space-y-4 overflow-y-auto min-h-[450px]">
       <div className="flex items-center space-x-2 text-cyanGlow">
         <Building2 className="w-5 h-5 text-cyanGlow" />
         <span className="font-bold">2D/3D HYBRID DIGITAL TWIN INFRASTRUCTURE MATRIX</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {buildings.map((b) => (
           <div
             key={b.id}
             onClick={() => onSelect(b)}
-            className="p-4 rounded-xl glass-panel border border-white/10 hover:border-cyanGlow/50 cursor-pointer space-y-2 transition-all group"
+            className="p-3.5 rounded-xl glass-panel border border-white/10 hover:border-cyanGlow/50 cursor-pointer space-y-2 transition-all group"
           >
             <div className="flex justify-between items-start">
-              <h4 className="font-bold text-white group-hover:text-cyanGlow transition">{b.name}</h4>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyanGlow/20 text-cyanGlow border border-cyanGlow/30">
+              <h4 className="font-bold text-white group-hover:text-cyanGlow transition line-clamp-1">{b.name}</h4>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyanGlow/20 text-cyanGlow border border-cyanGlow/30 shrink-0">
                 {b.category}
               </span>
             </div>
             <div className="text-[11px] text-gray-300 space-y-1">
               <div className="flex justify-between">
-                <span>Thermal:</span>
+                <span>Thermal Temp:</span>
                 <span className="text-amber-300 font-bold">{b.temperature_c}°C</span>
               </div>
               <div className="flex justify-between">
@@ -197,7 +204,7 @@ const Fallback2DView: React.FC<{ buildings: BuildingData[]; onSelect: (b: Buildi
                 <span className="text-cyanGlow font-bold">{b.occupancy_pct}%</span>
               </div>
               <div className="flex justify-between">
-                <span>Integrity:</span>
+                <span>Structural Integrity:</span>
                 <span className="text-emerald-400 font-bold">{b.structural_integrity}%</span>
               </div>
             </div>
@@ -213,20 +220,21 @@ export const DigitalTwin3D: React.FC<DigitalTwin3DProps> = ({ location }) => {
   const [dayNight, setDayNight] = useState<"day" | "night">("night");
 
   const buildings = useMemo(() => generateDynamicBuildings(location), [location]);
-  const activeCity = location?.city || location?.suburb || "Local Sector";
+  const activeCity = location?.city || location?.suburb || location?.locality || "ACTIVE SECTOR";
+  const activeAddress = location?.current_address || `Lat: ${location?.lat?.toFixed(4) || "40.7128"}, Lon: ${location?.lon?.toFixed(4) || "-74.0060"}`;
 
   return (
-    <div className="w-full h-full min-h-[520px] rounded-2xl overflow-hidden glass-panel relative flex flex-col">
+    <div className="w-full h-full min-h-[500px] rounded-2xl overflow-hidden glass-panel relative flex flex-col">
       {/* 3D Toolbar Header */}
-      <div className="absolute top-4 left-4 z-20 flex items-center space-x-3">
-        <div className="bg-darkBg/90 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-xs font-mono">
-          <span className="text-cyanGlow font-bold block">{activeCity.toUpperCase()} 3D DIGITAL TWIN MESH</span>
-          <span className="text-gray-400 text-[10px]">Real-World Building Extrusions & Live Traffic Telemetry</span>
+      <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2">
+        <div className="bg-darkBg/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 text-xs font-mono shadow-xl">
+          <span className="text-cyanGlow font-bold block uppercase">{activeCity} 3D DIGITAL TWIN MESH</span>
+          <span className="text-gray-300 text-[10px] truncate max-w-xs block">📍 {activeAddress}</span>
         </div>
 
         <button
           onClick={() => setDayNight(dayNight === "night" ? "day" : "night")}
-          className="bg-darkBg/90 backdrop-blur-md p-2 rounded-xl border border-white/10 text-gray-300 hover:text-cyanGlow transition"
+          className="bg-darkBg/90 backdrop-blur-md p-2 rounded-xl border border-white/10 text-gray-300 hover:text-cyanGlow transition shadow-xl"
           title="Toggle Day/Night Lighting"
         >
           {dayNight === "night" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-cyanGlow" />}
@@ -235,7 +243,7 @@ export const DigitalTwin3D: React.FC<DigitalTwin3DProps> = ({ location }) => {
 
       {/* Selected Building Telemetry Drawer */}
       {selectedBuilding && (
-        <div className="absolute top-4 right-4 z-20 bg-darkBg/95 backdrop-blur-md p-4 rounded-xl border border-cyanGlow/40 w-72 space-y-3 font-mono text-xs shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="absolute top-3 right-3 z-20 bg-darkBg/95 backdrop-blur-md p-4 rounded-xl border border-cyanGlow/40 w-72 space-y-3 font-mono text-xs shadow-2xl animate-in slide-in-from-right duration-200">
           <div className="flex justify-between items-center border-b border-white/10 pb-2">
             <h4 className="font-bold text-cyanGlow truncate">{selectedBuilding.name}</h4>
             <button
@@ -268,7 +276,7 @@ export const DigitalTwin3D: React.FC<DigitalTwin3DProps> = ({ location }) => {
 
       {/* Three.js Canvas wrapped in ErrorBoundary */}
       <WebGLErrorBoundary fallback={<Fallback2DView buildings={buildings} onSelect={setSelectedBuilding} />}>
-        <Canvas camera={{ position: [20, 20, 20], fov: 45 }}>
+        <Canvas camera={{ position: [20, 20, 20], fov: 45 }} style={{ width: "100%", height: "100%", minHeight: "500px" }}>
           <color attach="background" args={[dayNight === "night" ? "#090d16" : "#1e293b"]} />
           <ambientLight intensity={dayNight === "night" ? 0.3 : 0.8} />
           <directionalLight position={[30, 40, 20]} intensity={dayNight === "night" ? 0.8 : 1.5} color="#ffffff" />
@@ -280,7 +288,7 @@ export const DigitalTwin3D: React.FC<DigitalTwin3DProps> = ({ location }) => {
           {/* Animated Moving Traffic Particles */}
           <TrafficParticles />
 
-          {/* Buildings */}
+          {/* Dynamic 3D Buildings */}
           {buildings.map((b) => (
             <BuildingMesh
               key={b.id}
