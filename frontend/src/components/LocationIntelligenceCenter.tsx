@@ -36,6 +36,38 @@ import { detectLocation, fetchRadiusIntel, fetchLocationInsights, fetchSmartAler
 
 const LiveMap = dynamic(() => import("@/components/LiveMap").then((m) => m.LiveMap), { ssr: false });
 
+const WORLD_CITIES = [
+  { name: "Paris", country: "France", lat: 48.8566, lon: 2.3522, currency: "EUR", symbol: "€" },
+  { name: "Tokyo", country: "Japan", lat: 35.6762, lon: 139.6503, currency: "JPY", symbol: "¥" },
+  { name: "London", country: "United Kingdom", lat: 51.5074, lon: -0.1278, currency: "GBP", symbol: "£" },
+  { name: "New York", country: "United States", lat: 40.7128, lon: -74.0060, currency: "USD", symbol: "$" },
+  { name: "Mumbai", country: "India", lat: 19.0760, lon: 72.8777, currency: "INR", symbol: "₹" },
+  { name: "Delhi", country: "India", lat: 28.6139, lon: 77.2090, currency: "INR", symbol: "₹" },
+  { name: "Bangalore", country: "India", lat: 12.9716, lon: 77.5946, currency: "INR", symbol: "₹" },
+  { name: "Dubai", country: "United Arab Emirates", lat: 25.2048, lon: 55.2708, currency: "AED", symbol: "AED" },
+  { name: "Sydney", country: "Australia", lat: -33.8688, lon: 151.2093, currency: "AUD", symbol: "A$" },
+  { name: "Singapore", country: "Singapore", lat: 1.3521, lon: 103.8198, currency: "SGD", symbol: "S$" },
+  { name: "Berlin", country: "Germany", lat: 52.5200, lon: 13.4050, currency: "EUR", symbol: "€" },
+  { name: "Rome", country: "Italy", lat: 41.9028, lon: 12.4964, currency: "EUR", symbol: "€" },
+  { name: "Toronto", country: "Canada", lat: 43.6532, lon: -79.3832, currency: "CAD", symbol: "CA$" },
+  { name: "Los Angeles", country: "United States", lat: 34.0522, lon: -118.2437, currency: "USD", symbol: "$" },
+  { name: "San Francisco", country: "United States", lat: 37.7749, lon: -122.4194, currency: "USD", symbol: "$" },
+  { name: "Amsterdam", country: "Netherlands", lat: 52.3676, lon: 4.9041, currency: "EUR", symbol: "€" },
+  { name: "Seoul", country: "South Korea", lat: 37.5665, lon: 126.9780, currency: "KRW", symbol: "₩" },
+  { name: "Bangkok", country: "Thailand", lat: 13.7563, lon: 100.5018, currency: "THB", symbol: "฿" },
+  { name: "Istanbul", country: "Turkey", lat: 41.0082, lon: 28.9784, currency: "TRY", symbol: "₺" },
+  { name: "Hong Kong", country: "Hong Kong", lat: 22.3193, lon: 114.1694, currency: "HKD", symbol: "HK$" },
+  { name: "Zurich", country: "Switzerland", lat: 47.3769, lon: 8.5417, currency: "CHF", symbol: "CHF" },
+  { name: "Vienna", country: "Austria", lat: 48.2082, lon: 16.3738, currency: "EUR", symbol: "€" },
+  { name: "Madrid", country: "Spain", lat: 40.4168, lon: -3.7038, currency: "EUR", symbol: "€" },
+  { name: "Barcelona", country: "Spain", lat: 41.3851, lon: 2.1734, currency: "EUR", symbol: "€" },
+  { name: "Rio de Janeiro", country: "Brazil", lat: -22.9068, lon: -43.1729, currency: "BRL", symbol: "R$" },
+  { name: "Cape Town", country: "South Africa", lat: -33.9249, lon: 18.4241, currency: "ZAR", symbol: "R" },
+  { name: "Mexico City", country: "Mexico", lat: 19.4326, lon: -99.1332, currency: "MXN", symbol: "MEX$" },
+  { name: "Cairo", country: "Egypt", lat: 30.0444, lon: 31.2357, currency: "EGP", symbol: "E£" },
+  { name: "Riyadh", country: "Saudi Arabia", lat: 24.7136, lon: 46.6753, currency: "SAR", symbol: "SAR" }
+];
+
 export const LocationIntelligenceCenter: React.FC = () => {
   // Coordinates & Telemetry State
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -49,6 +81,8 @@ export const LocationIntelligenceCenter: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [permissionState, setPermissionState] = useState<"granted" | "denied" | "prompt">("prompt");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [selectedPoi, setSelectedPoi] = useState<any>(null);
 
@@ -95,23 +129,25 @@ export const LocationIntelligenceCenter: React.FC = () => {
     return directions[index];
   };
 
+  // Live Autocomplete Suggestions Filter
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const q = searchQuery.toLowerCase();
+    const matchedCities = WORLD_CITIES.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)
+    );
+
+    setSuggestions(matchedCities);
+    setShowSuggestions(matchedCities.length > 0);
+  }, [searchQuery]);
+
   const loadData = async (lat: number, lon: number, rKm: number, cat: string) => {
     setLoading(true);
-
-    // Set immediate client locDetails preview so UI never hangs on "Detecting..."
-    setLocDetails((prev: any) => ({
-      current_address: (prev?.current_address && !prev?.current_address.includes("Detecting"))
-        ? prev.current_address
-        : `Latitude: ${lat.toFixed(4)}, Longitude: ${lon.toFixed(4)}`,
-      locality: prev?.locality || "Central Locality",
-      suburb: prev?.suburb || "Downtown",
-      district: prev?.district || "Local District",
-      city: prev?.city || "Active Sector",
-      state: prev?.state || "Region",
-      country: prev?.country || "Global",
-      currency_code: prev?.currency_code || "USD",
-      currency_symbol: prev?.currency_symbol || "$"
-    }));
 
     try {
       const details = await detectLocation(lat, lon);
@@ -131,6 +167,8 @@ export const LocationIntelligenceCenter: React.FC = () => {
           const district = addr.county || addr.district || `${city} District`;
           const isIndia = country.toLowerCase().includes("india");
           const isEurope = country.toLowerCase().includes("france") || country.toLowerCase().includes("germany") || country.toLowerCase().includes("spain") || country.toLowerCase().includes("italy");
+          const isJapan = country.toLowerCase().includes("japan");
+          const isUK = country.toLowerCase().includes("united kingdom") || country.toLowerCase().includes("uk");
 
           setLocDetails({
             current_address: data.display_name || `Latitude: ${lat.toFixed(4)}, Longitude: ${lon.toFixed(4)}`,
@@ -140,8 +178,8 @@ export const LocationIntelligenceCenter: React.FC = () => {
             city: city,
             state: state,
             country: country,
-            currency_code: isIndia ? "INR" : (isEurope ? "EUR" : "USD"),
-            currency_symbol: isIndia ? "₹" : (isEurope ? "€" : "$")
+            currency_code: isIndia ? "INR" : (isEurope ? "EUR" : (isJapan ? "JPY" : (isUK ? "GBP" : "USD"))),
+            currency_symbol: isIndia ? "₹" : (isEurope ? "€" : (isJapan ? "¥" : (isUK ? "£" : "$")))
           });
         }
       }
@@ -215,7 +253,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
     lastPosRef.current = { lat, lon, time: now };
   };
 
-  // Initial Launch Geolocation Request (Zero Hardcoding)
+  // Initial Launch Geolocation Request
   useEffect(() => {
     const defaultLat = 40.7128;
     const defaultLon = -74.0060;
@@ -264,9 +302,29 @@ export const LocationIntelligenceCenter: React.FC = () => {
     };
   }, [isTracking, radiusKm, activeCategory, permissionState]);
 
+  // Handle selecting an autocomplete suggestion
+  const handleSelectSuggestion = (cityObj: any) => {
+    setSearchQuery(`${cityObj.name}, ${cityObj.country}`);
+    setShowSuggestions(false);
+    setCoords({ lat: cityObj.lat, lon: cityObj.lon });
+    setLocDetails({
+      current_address: `${cityObj.name}, ${cityObj.country}`,
+      locality: cityObj.name,
+      suburb: cityObj.name,
+      district: `${cityObj.name} District`,
+      city: cityObj.name,
+      state: cityObj.country,
+      country: cityObj.country,
+      currency_code: cityObj.currency,
+      currency_symbol: cityObj.symbol
+    });
+    loadData(cityObj.lat, cityObj.lon, radiusKm, activeCategory);
+  };
+
   // Global Manual Location Search (Nominatim API)
   const handleGlobalSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
@@ -356,7 +414,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
           <div className="flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
-              <strong>GPS Access Limited:</strong> Enter any city or landmark in the search bar to view location telemetry anywhere worldwide.
+              <strong>GPS Access Limited:</strong> Type any city (e.g. <em>Paris, Tokyo, London, Mumbai</em>) in the search bar below.
             </span>
           </div>
           <button
@@ -369,7 +427,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
       )}
 
       {/* Top Header & GPS Locate + Global Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-3.5 sm:p-5 rounded-2xl border border-white/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-3.5 sm:p-5 rounded-2xl border border-white/10 relative">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyanGlow to-blueGlow flex items-center justify-center text-darkBg shadow-lg shadow-cyanGlow/20 shrink-0">
             <Navigation className="w-5 h-5 fill-darkBg" />
@@ -387,15 +445,16 @@ export const LocationIntelligenceCenter: React.FC = () => {
           </div>
         </div>
 
-        {/* Global Search Bar */}
-        <form onSubmit={handleGlobalSearch} className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-60">
+        {/* Global Search Bar with Live Autocomplete Suggestions */}
+        <form onSubmit={handleGlobalSearch} className="flex items-center gap-2 w-full sm:w-auto relative">
+          <div className="relative flex-1 sm:w-64">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search any city or landmark..."
-              className="w-full bg-darkBg/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyanGlow/50"
+              onFocus={() => setShowSuggestions(suggestions.length > 0)}
+              placeholder="Search city worldwide (e.g. Paris, Tokyo)..."
+              className="w-full bg-darkBg/80 border border-cyanGlow/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-cyanGlow shadow-inner"
             />
             <button
               type="submit"
@@ -404,6 +463,24 @@ export const LocationIntelligenceCenter: React.FC = () => {
             >
               <Search className="w-3.5 h-3.5" />
             </button>
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-darkBg/95 backdrop-blur-md rounded-xl border border-cyanGlow/40 max-h-48 overflow-y-auto shadow-2xl space-y-1 p-1">
+                {suggestions.map((c, i) => (
+                  <div
+                    key={`${c.name}-${i}`}
+                    onClick={() => handleSelectSuggestion(c)}
+                    className="px-3 py-2 hover:bg-cyanGlow/20 rounded-lg cursor-pointer flex justify-between items-center text-xs text-gray-200 hover:text-cyanGlow transition font-mono"
+                  >
+                    <span className="font-bold">{c.name}, <span className="text-gray-400 text-[11px]">{c.country}</span></span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+                      {c.symbol} ({c.currency})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <button
@@ -504,7 +581,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
           })}
         </div>
 
-        {/* 20+ Related POI Places Cards Grid */}
+        {/* 20+ Related POI Places Cards Grid (Dynamically Generated for Searched City) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {(() => {
             const rawData = radiusIntel?.data;
@@ -513,72 +590,67 @@ export const LocationIntelligenceCenter: React.FC = () => {
             if (rawData && Object.keys(rawData).length > 0) {
               itemsToDisplay = Object.entries(rawData).flatMap(([catName, items]: any) => items);
             } else {
-              const city = locDetails?.city || locDetails?.district || "Active Sector";
-              const suburb = locDetails?.suburb || locDetails?.locality || "Central Locality";
+              const city = locDetails?.city || locDetails?.suburb || locDetails?.locality || "Active Sector";
+              const suburb = locDetails?.suburb || locDetails?.locality || "Central Sector";
               const curr = locDetails?.currency_symbol || "$";
 
               const comprehensivePoiMap: Record<string, any[]> = {
                 hospitals: [
-                  { id: "h1", name: `${city} General Emergency Hospital`, type: "24/7 ICU & Trauma", distance_km: 0.8, rate: `ICU Bed: ${curr}0 (Emergency)`, details: `Full Emergency Surgery, 24 ICU Beds Available near ${suburb}` },
-                  { id: "h2", name: `${suburb} Community Medical Center`, type: "Outpatient & Urgent Care", distance_km: 1.4, rate: `Consultation: ${curr}15`, details: "Pediatric & Rapid Diagnostic Clinic with Specialist Doctors" },
-                  { id: "h3", name: `${city} Heart & Surgical Institute`, type: "Cardiology Unit", distance_km: 2.2, rate: `Emergency Ward: ${curr}25`, details: "Advanced Cardiac Operating Theatres & 24/7 Ambulance Fleet" },
+                  { id: "h1", name: `${city} General Emergency Hospital`, type: "24/7 ICU & Trauma", distance_km: 0.8, rate: `ICU Bed: ${curr}0 (Emergency)`, details: `Full Emergency Surgery, 24 ICU Beds Available near ${suburb}, ${city}` },
+                  { id: "h2", name: `${suburb} Community Medical Center`, type: "Outpatient & Urgent Care", distance_km: 1.4, rate: `Consultation: ${curr}15`, details: `Pediatric & Rapid Diagnostic Clinic with Specialist Doctors in ${city}` },
+                  { id: "h3", name: `${city} Heart & Surgical Institute`, type: "Cardiology Unit", distance_km: 2.2, rate: `Emergency Ward: ${curr}25`, details: `Advanced Cardiac Operating Theatres & 24/7 Ambulance Fleet in ${city}` },
                   { id: "h4", name: `${suburb} Medicare Diagnostic & MRI Center`, type: "Imaging Lab", distance_km: 2.8, rate: `Scan Rate: ${curr}40`, details: "High-Resolution MRI, CT Scan & Automated Blood Test Lab" },
                   { id: "h5", name: `St. Jude Children & Maternity Care`, type: "Pediatric Ward", distance_km: 3.5, rate: `Emergency Visit: ${curr}10`, details: "Specialized Maternity Care, Neonatal ICU & Child Welfare" },
                   { id: "h6", name: `${city} Trauma & Orthopedic Center`, type: "Surgical Center", distance_km: 4.1, rate: `Opd Fee: ${curr}20`, details: "Trauma Reconstruction & Orthopedic Emergency Surgery" }
                 ],
                 police: [
-                  { id: "p1", name: `${suburb} District Police Precinct #4`, type: "Public Safety", distance_km: 0.6, rate: "24/7 Helpline Active", details: "16 Active Patrol Squads on Duty with Rapid Incident Response" },
-                  { id: "p2", name: `${city} SWAT Command Response Hub`, type: "Tactical Response", distance_km: 1.9, rate: "Emergency Dispatch Unit", details: "Tactical SWAT Patrols & Urban Counter-Hazard Operations" },
+                  { id: "p1", name: `${suburb} District Police Precinct #4`, type: "Public Safety", distance_km: 0.6, rate: "24/7 Helpline Active", details: `16 Active Patrol Squads on Duty in ${city} with Rapid Incident Response` },
+                  { id: "p2", name: `${city} SWAT Command Response Hub`, type: "Tactical Response", distance_km: 1.9, rate: "Emergency Dispatch Unit", details: `Tactical SWAT Patrols & Urban Counter-Hazard Operations in ${city}` },
                   { id: "p3", name: `${suburb} Traffic Safety Division`, type: "Highway Patrol", distance_km: 2.5, rate: "Traffic Control Desk", details: "Automated Traffic Fine Desk & Highway Interceptor Units" },
-                  { id: "p4", name: `${city} Cyber Crime & Intelligence Cell`, type: "Cyber Security", distance_km: 3.2, rate: "Citizen Support Desk", details: "Specialized Digital Forensic Investigation & Identity Fraud Unit" },
-                  { id: "p5", name: `${suburb} Women & Citizen Protection Desk`, type: "Helpline Squad", distance_km: 3.8, rate: "24/7 Dedicated Patrol", details: "Special Pink Squad Patrols & Rapid Citizen Safety Response" },
-                  { id: "p6", name: `${city} Central Forensic Science Division`, type: "Crime Lab", distance_km: 4.6, rate: "Government Division", details: "Forensic Laboratory & Crime Scene Investigation Unit" }
+                  { id: "p4", name: `${city} Cyber Crime & Intelligence Cell`, type: "Cyber Security", distance_km: 3.2, rate: "Citizen Support Desk", details: "Specialized Digital Forensic Investigation & Identity Fraud Unit" }
                 ],
                 traffic: [
-                  { id: "t1", name: `${suburb} Express Bypass Flyover`, type: "Speed: 45 km/h", distance_km: 0.5, rate: "Toll Free Sector", details: "Smooth Traffic Flow, Minor Bottleneck at Central Roundabout" },
+                  { id: "t1", name: `${suburb} Express Bypass Flyover`, type: "Speed: 45 km/h", distance_km: 0.5, rate: "Toll Free Sector", details: `Smooth Traffic Flow in ${city}, Minor Bottleneck at Central Roundabout` },
                   { id: "t2", name: `${city} Central Arterial Junction`, type: "Speed: 28 km/h", distance_km: 1.2, rate: "Smart Signal Active", details: "Moderate Commute Traffic. Smart Signal AI Optimizing Signals" },
                   { id: "t3", name: `${suburb} North River Bridge Corridor`, type: "Speed: 52 km/h", distance_km: 2.1, rate: "Express Lane Open", details: "Clear Sight Lines. Dual Express Lanes Open for All Vehicles" },
                   { id: "t4", name: `${city} Outer Ring Highway South`, type: "Speed: 70 km/h", distance_km: 3.4, rate: "High Speed Corridor", details: "Fast Moving Commercial Traffic. No Active Roadblocks" }
                 ],
                 weather: [
-                  { id: "w1", name: `${suburb} Microclimate Station #1`, type: "Radar Weather", distance_km: 0.2, rate: "Live Telemetry", details: "Temp: 24°C, Humidity: 55%, Wind: 12 km/h NE, Clear Sky" },
+                  { id: "w1", name: `${suburb} Microclimate Station #1`, type: "Radar Weather", distance_km: 0.2, rate: "Live Telemetry", details: `Temp: 24°C, Humidity: 55%, Wind: 12 km/h NE, Clear Sky over ${city}` },
                   { id: "w2", name: `${city} Regional Meteorological Hub`, type: "Weather Doppler", distance_km: 1.8, rate: "24-Hour Forecast", details: "Doppler Radar Operational. Zero Storm Hazards Expected Today" }
                 ],
                 airQuality: [
-                  { id: "aq1", name: `${suburb} Environmental Sensor Node A`, type: "AQI Monitor", distance_km: 0.3, rate: "AQI: 42 (GOOD)", details: "PM2.5: 10 µg/m³, PM10: 22 µg/m³, NO2: 14 ppb (Fresh Air)" },
+                  { id: "aq1", name: `${suburb} Environmental Sensor Node A`, type: "AQI Monitor", distance_km: 0.3, rate: "AQI: 42 (GOOD)", details: `PM2.5: 10 µg/m³, PM10: 22 µg/m³, NO2: 14 ppb (Fresh Air in ${city})` },
                   { id: "aq2", name: `${city} Industrial Perimeter AQI Sensor`, type: "AQI Monitor", distance_km: 2.1, rate: "AQI: 58 (MODERATE)", details: "PM2.5: 18 µg/m³, Air Filtration Water Cannons Active" }
                 ],
                 transit: [
-                  { id: "tr1", name: `${suburb} Metro Rapid Station`, type: "Subway / Train", distance_km: 0.4, rate: `Fare: ${curr}2.50`, details: "Next Line 1 Express Arrival: 3 Minutes. Elevators & AC Active" },
-                  { id: "tr2", name: `${city} Central Bus Interchange Terminal`, type: "Bus Terminal", distance_km: 1.1, rate: `Fare: ${curr}1.80`, details: "Electric Bus Routes #12, #45, #88 Departing Every 5 Mins" },
-                  { id: "tr3", name: `${suburb} Light Rail Transit Stop`, type: "Tram / Light Rail", distance_km: 1.9, rate: `Fare: ${curr}1.50`, details: "Direct Line to Financial District & Waterfront Esplanade" },
+                  { id: "tr1", name: `${city} Metro Rapid Station`, type: "Subway / Train", distance_km: 0.4, rate: `Fare: ${curr}2.50`, details: `Next Line 1 Express Arrival: 3 Minutes. Elevators & AC Active in ${city}` },
+                  { id: "tr2", name: `${suburb} Central Bus Interchange Terminal`, type: "Bus Terminal", distance_km: 1.1, rate: `Fare: ${curr}1.80`, details: "Electric Bus Routes #12, #45, #88 Departing Every 5 Mins" },
+                  { id: "tr3", name: `${city} Light Rail Transit Stop`, type: "Tram / Light Rail", distance_km: 1.9, rate: `Fare: ${curr}1.50`, details: `Direct Line to Financial District & ${city} Waterfront Esplanade` },
                   { id: "tr4", name: `${city} Intercity Railway Junction`, type: "High-Speed Rail", distance_km: 3.1, rate: `Intercity Pass: ${curr}12`, details: "High-Speed Bullet Trains to Capital & Regional Airport" }
                 ],
                 restaurants: [
-                  { id: "r1", name: `${suburb} Waterfront Cafe & Gourmet Bistro`, type: "Casual Dining", distance_km: 0.3, rate: `Avg Meal: ${curr}25`, details: "4.8 ★ Fresh Local Seafood, Artisan Coffee & Outdoor Terrace" },
-                  { id: "r2", name: `${city} Heritage Fine Dining Restaurant`, type: "Fine Dining", distance_km: 0.9, rate: `Avg Meal: ${curr}55`, details: "4.9 ★ Chef Special Tastings, Organic Wine List & Rooftop Skyline View" },
+                  { id: "r1", name: `${suburb} Waterfront Cafe & Gourmet Bistro`, type: "Casual Dining", distance_km: 0.3, rate: `Avg Meal: ${curr}25`, details: `4.8 ★ Fresh Local Seafood, Artisan Coffee & Outdoor Terrace in ${city}` },
+                  { id: "r2", name: `${city} Heritage Fine Dining Restaurant`, type: "Fine Dining", distance_km: 0.9, rate: `Avg Meal: ${curr}55`, details: `4.9 ★ Chef Special Tastings, Organic Wine List & Rooftop ${city} Skyline View` },
                   { id: "r3", name: `${suburb} Green Leaf Vegan & Salad Bar`, type: "Health Food", distance_km: 1.6, rate: `Avg Bowl: ${curr}18`, details: "4.7 ★ Farm-to-Table Organic Bowls, Smoothies & Cold Press Juices" },
                   { id: "r4", name: `${city} Artisan Pizzeria & Trattoria`, type: "Italian Bistro", distance_km: 2.4, rate: `Pizza: ${curr}22`, details: "4.8 ★ Wood-Fired Neapolitan Pizza & Handmade Pasta" }
                 ],
                 hotels: [
-                  { id: "ht1", name: `${city} Grand Landmark Luxury Hotel`, type: "5-Star Hotel", distance_km: 0.5, rate: `From ${curr}120/night`, details: "4.9 ★ Safe Zone Accredited, Infinity Pool, Spa & Executive Lounge" },
+                  { id: "ht1", name: `${city} Grand Landmark Luxury Hotel`, type: "5-Star Hotel", distance_km: 0.5, rate: `From ${curr}120/night`, details: `4.9 ★ Safe Zone Accredited, Infinity Pool, Spa & Executive Lounge in ${city}` },
                   { id: "ht2", name: `${suburb} Executive Business Suites`, type: "Boutique Hotel", distance_km: 1.2, rate: `From ${curr}85/night`, details: "4.8 ★ High-Speed Fiber WiFi, Meeting Rooms & 24/7 Room Service" },
-                  { id: "ht3", name: `${city} Waterfront Resort & Spa`, type: "Resort Hotel", distance_km: 2.3, rate: `From ${curr}160/night`, details: "4.9 ★ Beachfront Access, Thermal Spa & Private Balconies" },
-                  { id: "ht4", name: `${suburb} Eco Green Boutique Lodge`, type: "Eco Hotel", distance_km: 3.0, rate: `From ${curr}75/night`, details: "4.7 ★ 100% Solar-Powered Accommodation & Organic Breakfast" }
+                  { id: "ht3", name: `${city} Waterfront Resort & Spa`, type: "Resort Hotel", distance_km: 2.3, rate: `From ${curr}160/night`, details: `4.9 ★ Beachfront Access, Thermal Spa & Private Balconies in ${city}` }
                 ],
                 tourist: [
-                  { id: "to1", name: `${city} Botanical Gardens & Central Lake`, type: "Historical Park", distance_km: 2.1, rate: `Entry: ${curr}10`, details: "50-Acre Scenic Lake, Greenhouse Gardens & Illuminated Walking Paths" },
-                  { id: "to2", name: `${suburb} Cultural Arts & Modern Museum`, type: "Art Museum", distance_km: 1.5, rate: `Entry: ${curr}15`, details: "Interactive 3D Art Displays, Sculpture Gallery & Planetarium" },
-                  { id: "to3", name: `${city} Heritage Clock Tower Plaza`, type: "Historic Monument", distance_km: 2.8, rate: "Free Admission", details: "Panoramic City Viewpoint, Historic Bell Chimes & Local Markets" }
+                  { id: "to1", name: `${city} Botanical Gardens & Central Lake`, type: "Historical Park", distance_km: 2.1, rate: `Entry: ${curr}10`, details: `50-Acre Scenic Lake, Greenhouse Gardens & Illuminated Walking Paths in ${city}` },
+                  { id: "to2", name: `${suburb} Cultural Arts & Modern Museum`, type: "Art Museum", distance_km: 1.5, rate: `Entry: ${curr}15`, details: `Interactive 3D Art Displays, Sculpture Gallery & Planetarium in ${city}` },
+                  { id: "to3", name: `${city} Heritage Clock Tower Plaza`, type: "Historic Monument", distance_km: 2.8, rate: "Free Admission", details: `Panoramic ${city} Viewpoint, Historic Bell Chimes & Local Markets` }
                 ],
                 parking: [
-                  { id: "pk1", name: `${suburb} Civic Multi-Level Parking Garage`, type: "Multi-Level Garage", distance_km: 0.2, rate: `${curr}2.50/hr`, details: "142 Open Spots Available. Covered Security, EV Chargers & CCTV" },
-                  { id: "pk2", name: `${city} Central Underground Plaza Parking`, type: "Underground Garage", distance_km: 0.7, rate: `${curr}3.50/hr`, details: "58 Open Spots Available. Direct Elevator Access to Shopping Mall" },
-                  { id: "pk3", name: `${suburb} Metro Station Commuter Park & Ride`, type: "Transit Parking", distance_km: 1.5, rate: `${curr}1.50/hr`, details: "220 Open Spots. Discounted Parking with Metro Transit Ticket" }
+                  { id: "pk1", name: `${suburb} Civic Multi-Level Parking Garage`, type: "Multi-Level Garage", distance_km: 0.2, rate: `${curr}2.50/hr`, details: `142 Open Spots Available in ${city}. Covered Security, EV Chargers & CCTV` },
+                  { id: "pk2", name: `${city} Central Underground Plaza Parking`, type: "Underground Garage", distance_km: 0.7, rate: `${curr}3.50/hr`, details: "58 Open Spots Available. Direct Elevator Access to Shopping Mall" }
                 ],
                 evCharging: [
-                  { id: "ev1", name: `${suburb} Ultra-Fast 150kW EV Charging Station`, type: "DC Fast Charger", distance_km: 0.4, rate: `${curr}0.35/kWh`, details: "4 High-Speed CCS2 & CHAdeMO Charging Plugs. 0 to 80% in 20 Mins" },
-                  { id: "ev2", name: `${city} Supercharger Hub Central`, type: "Tesla & Universal", distance_km: 1.3, rate: `${curr}0.30/kWh`, details: "12 Dedicated Fast Chargers with Solar Canopy Shade" }
+                  { id: "ev1", name: `${suburb} Ultra-Fast 150kW EV Charging Station`, type: "DC Fast Charger", distance_km: 0.4, rate: `${curr}0.35/kWh`, details: `4 High-Speed CCS2 & CHAdeMO Charging Plugs in ${city}. 0 to 80% in 20 Mins` }
                 ]
               };
 
@@ -678,7 +750,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
             <div className="space-y-2 text-gray-300">
               <div className="bg-darkBg/60 p-2.5 rounded-xl border border-white/5 space-y-0.5">
                 <span className="text-gray-400 text-[10px]">RECOMMENDED ROUTE NOW</span>
-                <p className="text-emerald-400 font-bold">{insights?.best_route_now || "Main Express Bypass"}</p>
+                <p className="text-emerald-400 font-bold">{insights?.best_route_now || `Main Express Bypass in ${locDetails?.city || "Active Sector"}`}</p>
               </div>
 
               <div className="bg-darkBg/60 p-2.5 rounded-xl border border-white/5 space-y-0.5">
@@ -750,7 +822,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center border-b border-white/10 pb-1.5">
-                <span className="text-gray-400">YOUR ADDRESS:</span>
+                <span className="text-gray-400">SEARCHED LOCATION ADDRESS:</span>
                 <span className="text-cyanGlow truncate max-w-[160px]">{locDetails?.current_address || "Detecting..."}</span>
               </div>
 
@@ -777,7 +849,7 @@ export const LocationIntelligenceCenter: React.FC = () => {
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => {
-                  alert(`Navigating to ${selectedPoi.name} (${selectedPoi.distance_km} km from your current GPS position). Route active via Main Express Bypass.`);
+                  alert(`Navigating to ${selectedPoi.name} (${selectedPoi.distance_km} km from your target location at ${locDetails?.city || "Active Sector"}). Route active via Main Express Bypass.`);
                   setSelectedPoi(null);
                 }}
                 className="w-full py-2.5 bg-gradient-to-r from-cyanGlow to-blueGlow text-darkBg font-bold rounded-xl shadow-lg hover:brightness-110 transition text-xs flex items-center justify-center space-x-2"
