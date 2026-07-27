@@ -18,21 +18,20 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { label: "Control Room", href: "/", icon: LayoutDashboard },
-    { label: "Location Intelligence", href: "/location-intelligence", icon: Navigation },
+    { label: "Location Intelligence", href: "/", icon: Navigation },
     { label: "3D Digital Twin", href: "/digital-twin", icon: Box },
     { label: "2D Live GIS Map", href: "/map", icon: MapPin },
     { label: "Multi-Agent AI", href: "/agents", icon: Bot },
     { label: "Disaster Sandbox", href: "/disaster", icon: Flame },
     { label: "Citizen SOS Portal", href: "/citizen", icon: UserCheck },
-    { label: "Observability & AI Gateway", href: "/observability", icon: Activity },
+    { label: "Observability & AI", href: "/observability", icon: Activity },
   ];
 
   return (
-    <aside className="w-64 glass-panel border-r border-white/10 flex flex-col justify-between py-4 px-3 min-h-[calc(100vh-4rem)]">
+    <aside className="hidden lg:flex w-64 glass-panel border-r border-white/10 flex-col justify-between py-4 px-3 shrink-0 min-h-[calc(100vh-4rem)] font-mono text-xs">
       <div className="space-y-1">
-        <div className="px-3 py-2 text-[11px] font-mono uppercase text-gray-400 tracking-wider">
-          Operating System Navigation
+        <div className="px-3 py-2 text-[11px] uppercase text-gray-400 tracking-wider">
+          System Navigation
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -41,7 +40,7 @@ export const Sidebar: React.FC = () => {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${
                 isActive
                   ? "bg-gradient-to-r from-cyanGlow/20 to-blueGlow/20 text-cyanGlow border border-cyanGlow/40 shadow-lg shadow-cyanGlow/10"
                   : "text-gray-400 hover:text-white hover:bg-white/5"
